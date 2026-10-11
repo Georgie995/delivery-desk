@@ -112,10 +112,10 @@ The note's private part held the probable cause (`CAUSE_DUPLICATE_LISTING`, the 
   ```
   python -m pytest
   ```
-  - **71 tests.** 53 run anywhere: the note, the email, `--ask`, the settings checks, the secrets rules and how tools are run.
+  - **76 tests.** 58 run anywhere: the note, the email, `--ask`, the settings checks, the secrets rules and how tools are run.
   - **The joined-up tests** run the real delivery-ops-hub, manifest-doctor and ai-triage on a tiny synthetic delivery, with a stand-in for n8n. They run when those repos sit next to this folder. The AI key is always removed in the tests, so no AI call is ever made.
   - **One end-to-end test** uses a real, running n8n.
-  - **The tests were checked by breaking the code on purpose:** 32 protections were broken one at a time, and a test failed every time.
+  - **The tests were checked by breaking the code on purpose:** 35 protections were broken one at a time, and a test failed every time.
 
 ## Exit codes
 

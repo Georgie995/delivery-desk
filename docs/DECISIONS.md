@@ -224,3 +224,15 @@ Each entry records the decision, the alternatives considered and why this one wa
 - **Known limit:** on Linux and macOS, Stop ends the tool but not programs it started. The app is Windows-first.
 - **Tested by:** 7 new tests, including a stand-in program that starts a child, to prove Stop ends both. 5 protections were broken on purpose, and each was caught.
 
+
+## 2026-10-11: For the app: changing an answer on purpose
+
+- **Context:** in the app, going Back to question 2 and changing the answer is a deliberate edit. The command line's `--ask` still uses `fill_section`, which only ever fills empty sections, so it can never clobber text typed in a text editor.
+- **Decision:** `set_section` replaces the text under one of the email's seven sections (the two from the check and Georgi's five). Everything else in the note comes back exactly as it was.
+  - **Clearing one of Georgi's sections** puts its "(fill in" placeholder back, so it counts as empty again and the email can't be made.
+  - **The check's sections** can be reworded, but not emptied, because they go into the email.
+  - **A line that looks like a heading** is refused, as with `--ask`.
+  - **The private part** (probable causes, the ai-triage summary) can't be changed this way.
+- **The app adds its own guard:** it saves only if the section still says what the app last read, so an edit made in a text editor meanwhile is never overwritten.
+- **Wording:** "ai-triage is not set up in delivery-desk.toml" is now "ai-triage is not set up", because app users have no such file.
+- **Tested by:** 5 new tests. 3 protections were broken on purpose, and each was caught.
