@@ -14,7 +14,8 @@ from pathlib import Path
 
 import pytest
 
-from delivery_desk import cli
+from delivery_desk import cli, desk
+from delivery_desk.settings import load_settings
 
 PROJECTS = Path(__file__).resolve().parents[2]
 OPS_HUB = PROJECTS / "delivery-ops-hub"
@@ -41,6 +42,7 @@ def n8n():
     class Handler(BaseHTTPRequestHandler):
         def do_POST(self):
             body = json.loads(self.rfile.read(int(self.headers["Content-Length"])))
+            body["_secret_header"] = self.headers.get("X-Ops-Hub-Key")
             received.append(body)
             data = json.dumps({"logged": True, "alerted": body["status"] != "CLEAN", "alert_mode": "dry_run"}).encode()
             self.send_response(200)
@@ -99,6 +101,14 @@ def settings(tmp_path, url, triage=True):
 
 def check(desk, tree, manifest):
     return cli.main(["--config", str(desk), "check", str(tree), "--manifest", str(manifest)])
+
+
+def direct_settings(tmp_path, triage=True):
+    """What the app passes when alerts aren't set up: no delivery-ops-hub at all."""
+    return {"ops_hub_path": None, "ops_hub_config": None, "manifest_doctor_path": str(DOCTOR),
+            "reports_dir": str(tmp_path / "reports"),
+            "ai_triage_path": str(TRIAGE) if triage else None,
+            "ai_triage_python": str(TRIAGE_PYTHON) if triage else None}
 
 
 def report_folders(tmp_path):
@@ -186,6 +196,59 @@ def test_the_delivery_itself_is_never_changed(tmp_path, n8n):
     after = {p: (p.stat().st_size, p.stat().st_mtime_ns, p.read_bytes()) for p in tree.rglob("*") if p.is_file()}
     assert before == after
 
+
+
+# --- Without alerts (the app's route when delivery-ops-hub isn't set up) ------------------------------
+
+def test_without_alerts_problems_found_runs_the_checker_and_ai_triage_and_writes_the_note(tmp_path, n8n, capfd):
+    url, received = n8n
+    tree, manifest = make_delivery(tmp_path)
+    assert desk.run_check(direct_settings(tmp_path), tree, ["--manifest", str(manifest)]) == 1
+    assert received == []                                                  # nothing sent anywhere
+    [folder] = report_folders(tmp_path)
+    note = (folder / "incident-note.md").read_text(encoding="utf-8")
+    assert "- HASH_MISMATCH (error): 1 found" in note
+    assert "## ai-triage summary" in note and "FALLBACK: written by code" in note
+    assert "Working note written" in capfd.readouterr().out
+
+
+def test_without_alerts_a_clean_delivery_needs_no_note(tmp_path):
+    tree, manifest = make_delivery(tmp_path, broken=False)
+    assert desk.run_check(direct_settings(tmp_path), tree, ["--manifest", str(manifest)]) == 0
+    [folder] = report_folders(tmp_path)
+    assert not list(folder.glob("incident-note*")) and not list(folder.glob("triage*"))
+
+
+def test_without_alerts_a_check_that_could_not_run_writes_no_note(tmp_path, capfd):
+    tree, _ = make_delivery(tmp_path)
+    assert desk.run_check(direct_settings(tmp_path), tree, ["--manifest", str(tmp_path / "nope.md5")]) == 2
+    assert not list(tmp_path.rglob("incident-note*"))
+    assert "no working note" in capfd.readouterr().out.lower()
+
+
+@pytest.mark.parametrize("route", ["alerts", "no alerts"])
+def test_a_progress_file_reaches_manifest_doctor_on_both_routes(tmp_path, n8n, route):
+    url, _ = n8n
+    tree, manifest = make_delivery(tmp_path)
+    progress = tmp_path / "progress.json"
+    args = ["--manifest", str(manifest), "--progress-file", str(progress)]
+    if route == "alerts":
+        code = cli.main(["--config", str(settings(tmp_path, url)), "check", str(tree), *args])
+    else:
+        code = desk.run_check(direct_settings(tmp_path), tree, args)
+    assert code == 1
+    state = json.loads(progress.read_text(encoding="utf-8"))
+    assert (state["stage"], state["files_done"], state["files_total"]) == ("finished", 2, 2)
+
+
+def test_a_webhook_secret_handed_over_by_the_app_reaches_n8n_without_the_environment(tmp_path, n8n, monkeypatch):
+    url, received = n8n
+    monkeypatch.delenv("OPS_HUB_WEBHOOK_SECRET")
+    tree, manifest = make_delivery(tmp_path)
+    loaded = load_settings(settings(tmp_path, url))
+    code = desk.run_check(loaded, tree, ["--manifest", str(manifest)], secrets={"OPS_HUB_WEBHOOK_SECRET": SECRET})
+    assert code == 1
+    assert [m["_secret_header"] for m in received] == [SECRET]
 
 # --- End to end against the real n8n (skipped if it isn't running or no secret is saved) ----------------
 

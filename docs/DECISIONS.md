@@ -189,3 +189,19 @@ Each entry records the decision, the alternatives considered and why this one wa
   - unknown settings accepted;
   - settings errors not exiting with 3.
 - **Result:** a test failed every time.
+
+## 2026-10-11: Engine additions for the Delivery Desk app
+
+- **Context:** a desktop app (delivery-desk-app) now sits on top of this engine. The command line keeps its behaviour and tests.
+- **A no-alerts route:** when the settings have no `ops_hub_path` (the app, when alerts aren't set up), `run_check` runs manifest-doctor directly into the reports folder, then ai-triage and the working note, exactly as before. It returns manifest-doctor's own code: 0, 1 or 2.
+  - **It refuses `--out`,** because the reports folder is set by the settings. This is the same rule delivery-ops-hub applies.
+  - **The command line's settings file is unchanged** and still always uses delivery-ops-hub.
+- **Secrets handed over for one run:** `run_check(..., secrets=...)` lets the app pass the webhook secret and the AI key from Windows Credential Manager.
+  - **Each tool sees only its own secret:** the webhook secret only for delivery-ops-hub, the AI key only for ai-triage, and manifest-doctor neither, even when the environment holds both.
+  - **Why:** least privilege. A tool can't leak a secret it never had.
+- **Progress:** no change was needed. delivery-ops-hub already passes extra options to manifest-doctor unchanged, so `--progress-file` reaches it on both routes, which a test confirms.
+- **Tested by:**
+  - 13 new tests, including ones that watch exactly which secrets each tool is started with;
+  - 6 protections broken on purpose, each caught.
+- **Known wording issue for the app:** when ai-triage isn't set up, the note says "not set up in delivery-desk.toml". The app has no such file. This will be handled when the app's screens are built.
+
