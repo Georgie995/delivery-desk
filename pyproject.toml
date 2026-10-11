@@ -1,0 +1,15 @@
+[project]
+name = "delivery-desk"
+version = "0.1.0"
+description = "Joins delivery checks, alerts and triage into one flow, and turns the operator's findings into a manager email."
+requires-python = ">=3.11"
+license = "MIT"
+authors = [{ name = "Georgi Stoyanov" }]
+dependencies = []  # standard library only, by design
+
+[project.optional-dependencies]
+dev = ["pytest"]
+
+[tool.pytest.ini_options]
+pythonpath = ["."]
+testpaths = ["tests"]
