@@ -155,7 +155,7 @@ def test_without_ai_triage_the_note_says_why_and_everything_else_works(tmp_path,
     assert check(settings(tmp_path, url, triage=False), tree, manifest) == 1
     [folder] = report_folders(tmp_path)
     note = (folder / "incident-note.md").read_text(encoding="utf-8")
-    assert "Not available (ai-triage is not set up in delivery-desk.toml)." in note
+    assert "Not available (ai-triage is not set up)." in note
     assert len(received) == 1
 
 

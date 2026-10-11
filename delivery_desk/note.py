@@ -84,6 +84,28 @@ def fill_section(text, heading, answer):
             raise NoteError(f'the line "{line.strip()}" looks like a heading in the note; please reword it')
     if heading not in empty_sections(read_sections(text)):
         raise NoteError(f'"{heading}" already has text in the note')
+    return _replace_body(text, heading, answer)
+
+
+def set_section(text, heading, answer):
+    """For the app: change the text under one of the email's sections on purpose, e.g. going back
+    to change an answer. (The command line's --ask uses fill_section, which never replaces text.)
+    Clearing one of my sections puts its "(fill in" placeholder back."""
+    if heading not in FROM_CHECK + MINE:
+        raise NoteError(f'"{heading}" isn\'t one of the email\'s sections')
+    for line in answer.splitlines():
+        if _is_boundary(line):
+            raise NoteError(f'the line "{line.strip()}" looks like a heading in the note; please reword it')
+    if not answer.strip():
+        if heading in FROM_CHECK:
+            raise NoteError(f'"{heading}" can\'t be empty: it goes into the email')
+        answer = HINTS.get(heading, "(fill in)")
+    read_sections(text)  # the note must be readable before anything in it changes
+    return _replace_body(text, heading, answer)
+
+
+def _replace_body(text, heading, answer):
+    """Everything else in the note comes back exactly as it was."""
     lines = text.splitlines()
     start = next(i for i, line in enumerate(lines) if line.rstrip() == f"## {heading}")
     end = start + 1

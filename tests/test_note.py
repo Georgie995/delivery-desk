@@ -100,3 +100,45 @@ def test_a_heading_written_twice_is_an_error():
     note = build_note(make_report()).replace("## Subject summary\n", "## Subject summary\nx\n## Subject summary\n")
     with pytest.raises(NoteError, match="Subject summary"):
         read_sections(note)
+
+
+# --- For the app: changing an answer on purpose (the command line's --ask only ever fills empty ones) ---
+
+from delivery_desk.note import set_section
+
+
+def answered(note):
+    return note.replace("## When it happened\n(fill in)", "## When it happened\nDelivered 3 October.")
+
+
+def test_an_answer_can_be_changed_and_nothing_else_in_the_note_moves():
+    before = answered(build_note(make_report()))
+    after = set_section(before, "When it happened", "Delivered 3 October.\nOverwritten 9 October.")
+    assert read_sections(after)["When it happened"] == "Delivered 3 October.\nOverwritten 9 October."
+    others = {k: v for k, v in read_sections(before).items() if k != "When it happened"}
+    assert {k: v for k, v in read_sections(after).items() if k != "When it happened"} == others
+
+
+def test_clearing_one_of_my_answers_puts_the_placeholder_back():
+    after = set_section(answered(build_note(make_report())), "When it happened", "   ")
+    assert "When it happened" in empty_sections(read_sections(after))
+    cleared = set_section(build_note(make_report()), "Subject summary", "")
+    assert read_sections(cleared)["Subject summary"].startswith("(fill in: one line for the email subject")
+
+
+def test_the_check_sections_can_be_reworded_but_not_emptied():
+    note = set_section(build_note(make_report()), "The problem", "Two files don't match their checksums.")
+    assert read_sections(note)["The problem"] == "Two files don't match their checksums."
+    with pytest.raises(NoteError, match="can't be empty"):
+        set_section(note, "Which delivery", "  ")
+
+
+def test_a_line_that_looks_like_a_heading_is_refused_when_changing_an_answer():
+    with pytest.raises(NoteError, match="looks like a heading"):
+        set_section(build_note(make_report()), "How it happened", "fine\n## Subject summary\nsneaky")
+
+
+def test_only_the_email_sections_can_be_changed_this_way():
+    for heading in ("ai-triage summary", "Probable causes from the check (not verdicts)", "Banana"):
+        with pytest.raises(NoteError):
+            set_section(build_note(make_report()), heading, "anything")

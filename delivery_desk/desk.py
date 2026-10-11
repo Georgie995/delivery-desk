@@ -118,7 +118,7 @@ def _run_ops_hub(settings, tree, doctor_args, secrets, output=None, stop=None):
 def _run_ai_triage(settings, folder, secrets=None, output=None, stop=None):
     """ai-triage's checked summary for the note: (its triage.json record, its .md name), or (reason, None)."""
     if not settings["ai_triage_python"]:
-        return "ai-triage is not set up in delivery-desk.toml", None
+        return "ai-triage is not set up", None
     python = Path(settings["ai_triage_python"])
     if not python.exists():
         return f"ai-triage's Python not found at {settings['ai_triage_python']}", None
