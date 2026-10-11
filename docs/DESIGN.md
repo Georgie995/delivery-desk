@@ -4,7 +4,7 @@ Status: **Approved by Georgi on 2026-10-11.**
 
 ## 1. The problem (Georgi's words, from the kickoff)
 
-When a delivery fails its check, the operator ("I", below) works out the problem, then relays it to the manager **by email**, "so she's in the loop, not for any other reason". After that, the operator and manager write the client explanation together, by hand.
+When a delivery fails its check, the operator ("I", below) works out the problem, then relays it to the manager **by email**, "so [my manager is] in the loop, not for any other reason". After that, the operator and manager write the client explanation together, by hand.
 
 My three published tools each cover one piece:
 - **manifest-doctor** checks a delivery.
