@@ -28,3 +28,27 @@ When the boxes are filled, one command copies the top half and your boxes into a
 - **If you rename a box's heading by accident,** it stops and tells you which heading to put back, rather than guessing.
 
 **Tested by:** 25 automatic tests, using made-up reports. Nine protections were also broken on purpose, one at a time, to prove a test notices each one.
+
+---
+
+## Module 2: being asked for the empty boxes (`--ask`)
+
+**In one sentence:** instead of opening the note in a text editor, you can let the tool ask you for each empty box in the terminal. It saves each answer into the note the moment you finish it.
+
+**Like this:** a colleague holding the incident form asks, "When did it happen?" You answer, and they write it in straight away. Then they ask the next empty box. Boxes you've already filled in are skipped. If you get interrupted and walk off, everything you've already answered is on the form. Next time, they ask only for what's still blank.
+
+**How you use it:**
+```
+python -m delivery_desk email "<path to incident-note.md>" --ask
+```
+- **Type your answer**, then press Enter on an empty line to finish it. The subject summary is one line.
+- **Press Enter straight away** to skip a box for now.
+- **When every box is filled**, the email is written straight after.
+
+**Things it is careful about:**
+- **It never changes what you've written.** It only fills boxes that are still empty.
+- **If you fill a box in a text editor while it's asking,** it keeps your editor text, says so, and doesn't use the typed answer.
+- **Saving is all-or-nothing.** It writes a temporary copy and swaps it in, in one step. A crash can't leave a half-written note.
+- **It won't accept an answer line that looks like a heading** (e.g. `## How it happened`), because that would break the note. It asks again.
+
+**Tested by:** 8 more automatic tests (33 in total). They include stopping halfway, pressing Ctrl-C, and editing the note while answering. Six protections were broken on purpose, and a test caught each one.

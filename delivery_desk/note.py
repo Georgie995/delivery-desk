@@ -32,7 +32,8 @@ def build_note(report, triage=None, triage_file="triage.md"):
     lines = [f"# Incident note: {_data(_last_part(header['tree']))}", "",
              'How to use: write under each "(fill in)" heading, in any text editor, whenever you like.',
              "Don't rename the headings. When all five are filled in, run:",
-             '    python -m delivery_desk email "<path to this file>"', "",
+             '    python -m delivery_desk email "<path to this file>"',
+             "Or add --ask to that command to be asked for the empty sections instead.", "",
              "## Which delivery", _which_delivery(header), "",
              "## The problem", *_problem(report), ""]
     for heading in MINE:
@@ -47,20 +48,20 @@ def write_note(folder, text):
     return write_new(Path(folder), "incident-note", ".md", text)
 
 
+KNOWN = {f"## {h}": h for h in FROM_CHECK + MINE + PRIVATE}
+
+
 def read_sections(text):
     """Split a note into {heading: text}. Only exact, known headings count, so text that merely
     looks like a heading (a quoted AI line, an escaped file name) can't start a section."""
-    known = {f"## {h}": h for h in FROM_CHECK + MINE + PRIVATE}
     sections, current = {}, None
     for line in text.splitlines():
-        key = line.rstrip()
-        if key in known:
-            current = known[key]
+        if _is_boundary(line):
+            current = KNOWN.get(line.rstrip())
             if current in sections:
                 raise NoteError(f'the heading "## {current}" appears more than once; keep only one')
-            sections[current] = []
-        elif key.startswith("# For me only"):
-            current = None
+            if current is not None:
+                sections[current] = []
         elif current is not None:
             sections[current].append(line)
     missing = [h for h in FROM_CHECK + MINE if h not in sections]
@@ -73,6 +74,27 @@ def read_sections(text):
 def empty_sections(sections):
     """My sections still blank or still showing the "(fill in" placeholder, in note order."""
     return [h for h in MINE if not sections[h].strip() or sections[h].strip().startswith(PLACEHOLDER)]
+
+
+def fill_section(text, heading, answer):
+    """Put an answer under one of my sections, only if it's still empty. Everything else in the
+    note, including anything I've written, comes back exactly as it was."""
+    for line in answer.splitlines():
+        if _is_boundary(line):
+            raise NoteError(f'the line "{line.strip()}" looks like a heading in the note; please reword it')
+    if heading not in empty_sections(read_sections(text)):
+        raise NoteError(f'"{heading}" already has text in the note')
+    lines = text.splitlines()
+    start = next(i for i, line in enumerate(lines) if line.rstrip() == f"## {heading}")
+    end = start + 1
+    while end < len(lines) and not _is_boundary(lines[end]):
+        end += 1
+    return "\n".join(lines[:start + 1] + answer.splitlines() + [""] + lines[end:]) + "\n"
+
+
+def _is_boundary(line):
+    """A line that starts a section, or the start of the private part."""
+    return line.rstrip() in KNOWN or line.startswith("# For me only")
 
 
 # --- Building the parts from the report -----------------------------------------------------------------

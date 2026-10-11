@@ -1,4 +1,7 @@
-"""Writing new files without ever replacing an existing one."""
+"""Writing files safely: new files never replace old ones, and the note is updated in one step."""
+
+import os
+import tempfile
 
 
 def write_new(folder, stem, suffix, text):
@@ -13,3 +16,17 @@ def write_new(folder, stem, suffix, text):
             return path
         except FileExistsError:
             n += 1
+
+
+def replace_safely(path, text):
+    """Replace a file's contents in one step: write a temporary file next to it, then swap it in.
+    If anything goes wrong midway, the original is still there, whole."""
+    handle, temp = tempfile.mkstemp(dir=path.parent, prefix=f".{path.name}.", suffix=".tmp")
+    try:
+        with os.fdopen(handle, "w", encoding="utf-8") as f:
+            f.write(text)
+        os.replace(temp, path)
+    except BaseException:
+        if os.path.exists(temp):
+            os.remove(temp)  # only ever our own temporary file
+        raise

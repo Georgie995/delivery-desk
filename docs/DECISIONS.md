@@ -96,3 +96,49 @@ Each entry records the decision, the alternatives considered and why this one wa
   - cutting long lists.
 
   A test failed every time.
+
+## 2026-10-11: "The problem" keeps manifest-doctor's codes
+
+- **Decision (Georgi's):** lines such as `DUPLICATE_ENTRY (error): 1 found` stay as they are. Georgi can reword them in the note before emailing.
+- **Rejected:** a table of plain-English wordings for every code. It would be more to maintain, and it wasn't asked for.
+
+## 2026-10-11: `--ask` writes into the same working note
+
+- **Georgi asked for both ways of filling in:** by hand, and by being asked. Both write to the one note, so there's only ever one record of the incident.
+- **Only empty sections are asked.** Text Georgi has written is never changed.
+- **Rejected:** keeping typed answers in a separate file. That would create two records that could disagree.
+
+## 2026-10-11: Each answer is saved the moment it's finished
+
+- **Decision:**
+  - The note is updated after every answer, by writing a temporary file next to it and swapping it in one step.
+  - Stopping halfway (Ctrl-C, or closing the input) keeps every finished answer.
+  - A crash mid-save leaves the old note whole.
+- **Exit code after stopping:** 1, "sections still empty", not the usual Ctrl-C code (130). The `email` exit codes describe the state of the note, and that's what matters next.
+
+## 2026-10-11: The note is read again before every question and every save
+
+- **Why:** Georgi might fill in a section in his text editor while the tool is asking. If the section is no longer empty when it's time to save, his editor text is kept, the typed answer is dropped, and the tool says so.
+- **Rejected:** merging the two texts. Guessing how to combine someone's words is worse than asking them to check.
+
+## 2026-10-11: How an answer ends
+
+- **Decision:**
+  - An empty line finishes an answer, and pressing Enter straight away skips the section.
+  - The subject summary is always one line.
+- **Trade-off:** typed answers can't contain blank lines between paragraphs. For paragraphs, edit the note in a text editor.
+
+## 2026-10-11: An answer line that looks like a heading is refused
+
+- **Why:** a typed line such as `## How it happened` would create a second heading and break the note. The tool explains this and asks the same question again.
+
+## 2026-10-11: Module 2 tests were checked by breaking the code on purpose
+
+- **What was broken**, one at a time:
+  - asking for filled sections;
+  - overwriting text written in the editor meanwhile;
+  - accepting heading-like lines;
+  - not handling Ctrl-C;
+  - never swapping in the temporary file;
+  - never saving answers.
+- **Result:** a test failed every time.
