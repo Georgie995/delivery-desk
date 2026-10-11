@@ -2,6 +2,8 @@
 
 One command takes a problem delivery from **check** to a **ready-to-fill incident note**. A second command turns my filled-in note into an **email for my manager**. It joins my three earlier tools into one flow, and **it never sends anything, never decides the cause or the fix, and never changes the delivery.**
 
+**Prefer a window to the command line?** [ClearSum](https://github.com/Georgie995/clearsum) is the drag-and-drop desktop app built on this engine.
+
 ## The problem
 
 When a delivery failed its check, the routine was always the same:
