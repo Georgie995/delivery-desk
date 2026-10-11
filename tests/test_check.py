@@ -250,6 +250,36 @@ def test_a_webhook_secret_handed_over_by_the_app_reaches_n8n_without_the_environ
     assert code == 1
     assert [m["_secret_header"] for m in received] == [SECRET]
 
+
+# --- For the app: the full outcome, collected messages, and Stop ------------------------------------
+
+def test_the_app_gets_the_outcome_report_folder_note_and_every_message(tmp_path):
+    tree, manifest = make_delivery(tmp_path)
+    lines = []
+    outcome = desk.check(direct_settings(tmp_path), tree, ["--manifest", str(manifest)], output=lines.append)
+    [folder] = report_folders(tmp_path)
+    assert (outcome.code, outcome.result, outcome.stopped) == (1, "PROBLEMS FOUND", False)
+    assert outcome.report_folder == folder and outcome.note == folder / "incident-note.md"
+    said = "".join(lines)
+    assert "PROBLEMS FOUND" in said and "Working note written" in said
+
+
+def test_a_clean_outcome_has_its_report_but_no_note(tmp_path):
+    tree, manifest = make_delivery(tmp_path, broken=False)
+    outcome = desk.check(direct_settings(tmp_path), tree, ["--manifest", str(manifest)], output=lambda line: None)
+    assert (outcome.code, outcome.result, outcome.note) == (0, "CLEAN", None)
+    assert outcome.report_folder is not None
+
+
+def test_stopping_a_check_leaves_no_report_and_no_note(tmp_path):
+    tree, manifest = make_delivery(tmp_path)
+    stop = threading.Event()
+    stop.set()                                                    # stopped as soon as it starts
+    outcome = desk.check(direct_settings(tmp_path), tree, ["--manifest", str(manifest)],
+                         output=lambda line: None, stop=stop)
+    assert outcome.stopped is True and outcome.note is None and outcome.report_folder is None
+    assert not list(tmp_path.rglob("incident-note*"))
+
 # --- End to end against the real n8n (skipped if it isn't running or no secret is saved) ----------------
 
 def _real_secret():

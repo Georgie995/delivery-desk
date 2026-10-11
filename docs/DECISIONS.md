@@ -205,3 +205,22 @@ Each entry records the decision, the alternatives considered and why this one wa
   - 6 protections broken on purpose, each caught.
 - **Known wording issue for the app:** when ai-triage isn't set up, the note says "not set up in delivery-desk.toml". The app has no such file. This will be handled when the app's screens are built.
 
+## 2026-10-11: For the app: the full outcome, collected messages, no console windows, and Stop
+
+- **Context:** the Delivery Desk app runs checks from a window. Planning its Checking screen showed three needs, plus one more:
+  1. **No console windows.** A window app that starts command-line tools makes Windows flash a console window for each one, unless told not to.
+  2. **Messages collected:** the app shows the tools' messages, such as "NOT DELIVERED … saved to the outbox", rather than losing them.
+  3. **Stop really stops:** when alerts are on, delivery-ops-hub starts manifest-doctor as its own child program. On Windows, ending a program doesn't end the programs it started.
+  4. **The app needs the report folder and the note,** not just an exit code.
+- **Decision:**
+  - `check(…, output=…, stop=…)` returns an `Outcome`: the exit code, report folder, result, note, and whether it was stopped.
+  - **`run_check` is unchanged for the command line,** and still returns just the code.
+  - **When `output` or `stop` is given:**
+    - tools start with no console window;
+    - their messages are read line by line in the background, so a chatty tool can't stall;
+    - Stop ends the whole family of programs with Windows' own `taskkill /T`.
+  - **Without them, tools run exactly as before.** A test holds this.
+- **Stopping is safe:** every tool only reads the delivery. A stopped check returns code 130 ("interrupted"), with no report and no note.
+- **Known limit:** on Linux and macOS, Stop ends the tool but not programs it started. The app is Windows-first.
+- **Tested by:** 7 new tests, including a stand-in program that starts a child, to prove Stop ends both. 5 protections were broken on purpose, and each was caught.
+

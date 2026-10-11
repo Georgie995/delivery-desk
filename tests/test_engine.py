@@ -92,3 +92,76 @@ def test_manifest_doctor_is_started_with_no_secrets_at_all(tmp_path, monkeypatch
                               tmp_path, ["--manifest", "m.md5"])
     [(command, env)] = started.runs
     assert "manifest_doctor" in command and HOOK not in env and KEY not in env
+
+
+# --- For the app: messages collected, no console windows, and Stop ends a tool and its children -----
+
+import os
+import subprocess
+import sys
+import threading
+import time
+
+
+def test_on_the_command_line_tools_run_exactly_as_before(monkeypatch):
+    started = Started()
+    monkeypatch.setattr(desk.subprocess, "run", started)
+    desk._run(["tool"], env={})
+    assert started.runs == [(["tool"], {})]
+
+
+def test_for_the_app_each_line_a_tool_prints_is_collected():
+    lines = []
+    code = desk._run([sys.executable, "-c", "import sys; print('first', flush=True); print('second', file=sys.stderr)"],
+                     env=dict(os.environ), output=lines.append)
+    assert code == 0
+    assert [line.strip() for line in lines] == ["first", "second"]
+
+
+def test_for_the_app_no_console_window_is_opened(monkeypatch):
+    seen = {}
+
+    class FakePopen:
+        def __init__(self, command, **kwargs):
+            seen.update(kwargs)
+            self.stdout = iter(())
+            self.returncode = 0
+            self.pid = 1
+
+        def poll(self):
+            return 0
+
+        def wait(self, timeout=None):
+            return 0
+
+    monkeypatch.setattr(desk.subprocess, "Popen", FakePopen)
+    desk._run(["tool"], env={}, output=lambda line: None)
+    if os.name == "nt":
+        assert seen["creationflags"] & subprocess.CREATE_NO_WINDOW
+
+
+def _alive(pid):
+    if os.name == "nt":
+        found = subprocess.run(["tasklist", "/FI", f"PID eq {pid}", "/NH"], capture_output=True, text=True).stdout
+        return str(pid) in found
+    try:
+        os.kill(pid, 0)
+        return True
+    except OSError:
+        return False
+
+
+def test_stop_ends_the_tool_and_any_program_it_started(tmp_path):
+    pid_file = tmp_path / "child.pid"
+    child = "import time; time.sleep(60)"
+    parent = ("import subprocess, sys, time; "
+              f"p = subprocess.Popen([sys.executable, '-c', {child!r}]); "
+              f"open({str(pid_file)!r}, 'w').write(str(p.pid)); time.sleep(60)")
+    stop = threading.Event()
+    threading.Timer(1.5, stop.set).start()
+    started = time.monotonic()
+    desk._run([sys.executable, "-c", parent], env=dict(os.environ), output=lambda line: None, stop=stop)
+    assert time.monotonic() - started < 20                     # it didn't wait the full minute
+    child_pid = int(pid_file.read_text())
+    time.sleep(1)
+    assert not _alive(child_pid)                               # the child was stopped too
