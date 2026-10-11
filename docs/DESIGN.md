@@ -168,7 +168,7 @@ The exit code is the number a program reports when it ends, so other automation 
   - 0: clean or warnings;
   - 1: problems found, and a working note was written;
   - 2: not checked;
-  - 3: the alert wasn't delivered, or delivery-ops-hub's settings are wrong.
+  - 3: the alert wasn't delivered, or delivery-ops-hub's settings are wrong. Since module 3, also when delivery-desk's own settings are wrong (see DECISIONS).
 - **`email`:**
   - 0: email written;
   - 1: sections still empty;

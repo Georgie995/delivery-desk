@@ -142,3 +142,50 @@ Each entry records the decision, the alternatives considered and why this one wa
   - never swapping in the temporary file;
   - never saving answers.
 - **Result:** a test failed every time.
+
+## 2026-10-11: `check` runs the other tools as separate programs
+
+- **Decision:** delivery-desk runs `python -m delivery_ops_hub check …`, and through it manifest-doctor, then `python -m ai_triage draft …`, exactly as Georgi would by hand.
+  - Their messages appear unchanged on screen.
+  - delivery-ops-hub's exit code is passed on.
+- **Why:** each tool keeps its own checks, alerts, outbox and "never silent" behaviour. ai-triage needs its own Python, because only its `.venv` has the Anthropic library. delivery-desk stays standard-library-only.
+- **Rejected:** importing their code, as job-watch does with delivery-ops-hub's sender. Here the *whole* commands are wanted, not one part of them.
+
+## 2026-10-11: The new report is found by comparing folders before and after
+
+- **Decision:** the same approach delivery-ops-hub uses for manifest-doctor. The reports folder is read from delivery-ops-hub's own settings file, so it's never set twice.
+- **Rejected:** reading the printed "Reports:" line. Printed text can change between versions.
+
+## 2026-10-11: A working note only for PROBLEMS FOUND, even if the alert wasn't delivered
+
+- **Decision:**
+  - CLEAN, PASSED WITH WARNINGS and NOT CHECKED: no note (Georgi's answer at the design stage).
+  - An undelivered alert is still a problem delivery: the note is written, delivery-ops-hub keeps the alert in its outbox, and the exit code stays 3.
+
+## 2026-10-11: ai-triage is optional, and its absence is explained in the note
+
+- **Decision:** if ai-triage isn't set up, its Python is missing, or it stops without writing a note, the note says why. Everything else carries on.
+- **Settings:** `ai_triage_path` and `ai_triage_python` must be set together. Setting only one is a mistake, and the tool says so.
+
+## 2026-10-11: delivery-desk's own settings errors exit with 3
+
+- **Why:** this matches delivery-ops-hub, where 3 means "couldn't do the job: not delivered, or settings wrong". It keeps 2 meaning "NOT CHECKED" for `check`. This extends the approved design's exit code list, which is updated to match.
+- **Settings:** unknown setting names are refused, so a typo is caught rather than silently ignored.
+
+## 2026-10-11: The tests make real tool runs, but never a real AI call
+
+- **Decision:** the joined-up tests run the real delivery-ops-hub, manifest-doctor and ai-triage on a tiny synthetic delivery. A stand-in web server plays n8n.
+  - `ANTHROPIC_API_KEY` is always removed, so ai-triage uses its code-written fallback: no AI call and no cost.
+  - The tests skip when the sibling repos aren't next to delivery-desk, e.g. in a fresh download.
+  - One end-to-end test uses the real n8n when it's running.
+
+## 2026-10-11: Module 3 tests were checked by breaking the code on purpose
+
+- **What was broken**, one at a time:
+  - a note written for clean deliveries;
+  - no note when the alert wasn't delivered;
+  - ai-triage run with the wrong Python;
+  - delivery-ops-hub's exit code not passed on;
+  - unknown settings accepted;
+  - settings errors not exiting with 3.
+- **Result:** a test failed every time.

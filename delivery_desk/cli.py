@@ -1,7 +1,10 @@
 """The command line.
 
+    python -m delivery_desk check <delivery folder> --manifest FILE [other manifest-doctor options]
     python -m delivery_desk email <working note> [--ask]
 
+Exit codes for `check`: delivery-ops-hub's own (0 clean or warnings · 1 problems found, note
+written · 2 not checked · 3 alert not delivered, or settings wrong).
 Exit codes for `email`: 0 email written · 1 sections still empty · 2 tool error.
 """
 
@@ -9,9 +12,11 @@ import argparse
 import sys
 from pathlib import Path
 
+from .desk import run_check
 from .files import replace_safely
 from .manager_email import build_email, save_email
 from .note import MINE, NoteError, empty_sections, fill_section, read_sections
+from .settings import SettingsError, load_settings
 
 # Shown when asking, so the meaning of each section is clear without opening the design.
 PROMPTS = {
@@ -28,13 +33,27 @@ def main(argv=None):
         if hasattr(stream, "reconfigure"):
             stream.reconfigure(errors="backslashreplace")
     args = _parser().parse_args(argv)
+    if args.command == "check":
+        try:
+            settings = load_settings(args.config)
+        except SettingsError as error:
+            print(f"delivery-desk: error: {error}", file=sys.stderr)
+            return 3
+        return run_check(settings, args.tree, args.doctor_args)
     return _email(Path(args.note), args.ask)
 
 
 def _parser():
     parser = argparse.ArgumentParser(prog="delivery-desk",
-                                     description="Turn a filled-in working note into an email for your manager.")
+                                     description="Check a delivery, start a working note when there are problems, "
+                                                 "and turn the filled-in note into an email for your manager.")
+    parser.add_argument("--config", default="delivery-desk.toml", help="settings file (default: %(default)s)")
     commands = parser.add_subparsers(dest="command", required=True)
+    check = commands.add_parser("check", help="check a delivery: one alert, ai-triage and, if problems are "
+                                              "found, a working note")
+    check.add_argument("tree", help="the delivery folder to check")
+    check.add_argument("doctor_args", nargs=argparse.REMAINDER,
+                       help="passed unchanged to manifest-doctor, e.g. --manifest FILE")
     email = commands.add_parser("email", help="write the manager email from a filled-in working note")
     email.add_argument("note", help="the working note (incident-note.md in the report folder)")
     email.add_argument("--ask", action="store_true", help="ask for the empty sections first, saving each answer")

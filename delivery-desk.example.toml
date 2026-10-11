@@ -1,0 +1,11 @@
+# Copy to delivery-desk.toml (git-ignored) and change the paths for your computer.
+# No secrets here: the webhook secret stays in OPS_HUB_WEBHOOK_SECRET and the AI key in
+# ANTHROPIC_API_KEY, exactly as delivery-ops-hub and ai-triage already expect.
+
+ops_hub_path = "C:/path/to/delivery-ops-hub"                       # the folder with delivery_ops_hub/ inside
+ops_hub_config = "C:/path/to/delivery-ops-hub/ops-hub.toml"        # its reports folder and webhook are reused
+
+# Optional: ai-triage's checked summary in the working note. Set both, or neither.
+# ai-triage runs with its own Python, because that's where the Anthropic library is installed.
+ai_triage_path = "C:/path/to/ai-triage"
+ai_triage_python = "C:/path/to/ai-triage/.venv/Scripts/python.exe"  # on Linux/macOS: .venv/bin/python

@@ -52,3 +52,33 @@ python -m delivery_desk email "<path to incident-note.md>" --ask
 - **It won't accept an answer line that looks like a heading** (e.g. `## How it happened`), because that would break the note. It asks again.
 
 **Tested by:** 8 more automatic tests (33 in total). They include stopping halfway, pressing Ctrl-C, and editing the note while answering. Six protections were broken on purpose, and a test caught each one.
+
+---
+
+## Module 3: `check`, one command for stage 1
+
+**In one sentence:** one command checks a delivery with your existing tools and, if problems are found, leaves a ready-to-fill working note in the report folder.
+
+**Like this:** before, you'd run delivery-ops-hub (which runs manifest-doctor and sends the alert), then run ai-triage, then start writing notes from scratch. Now one command runs them in that order and starts the note for you:
+
+```
+python -m delivery_desk check "<delivery folder>" --manifest "<manifest file>"
+```
+
+1. **delivery-ops-hub runs exactly as it always does.** It checks with manifest-doctor, sends one alert to n8n and logs it, and you see its usual messages.
+2. **If problems were found,** ai-triage writes its checked summary next to the report. It uses its own Python, because that's where the Claude library lives. Without an API key, it uses its code-written version.
+3. **The working note** is written in the same report folder. The tool prints the exact `email` command to run once you've filled it in.
+
+**When something's missing:**
+- **The alert couldn't be delivered:** delivery-ops-hub keeps it in its outbox as before, and you still get your note.
+- **ai-triage isn't set up:** the note says so, and everything else still happens.
+- **The check couldn't run at all** (e.g. a wrong manifest path): there's no report, so there's no note, and you see delivery-ops-hub's explanation.
+- **Clean or warnings-only deliveries:** the alert and log happen as usual, with no note.
+
+**Settings:** `delivery-desk.toml` just says where delivery-ops-hub and ai-triage live. No secrets go in it.
+
+**Tested by:** 18 more tests (51 in total).
+- Nine run the **real** three tools on a tiny made-up delivery, with a stand-in for n8n, and never a real AI call.
+- One goes end to end into your real n8n.
+- Six protections were broken on purpose, and a test caught each one.
+- A test also confirms **the delivery's files are never changed.**
