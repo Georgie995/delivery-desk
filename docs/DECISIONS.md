@@ -236,3 +236,13 @@ Each entry records the decision, the alternatives considered and why this one wa
 - **The app adds its own guard:** it saves only if the section still says what the app last read, so an edit made in a text editor meanwhile is never overwritten.
 - **Wording:** "ai-triage is not set up in delivery-desk.toml" is now "ai-triage is not set up", because app users have no such file.
 - **Tested by:** 5 new tests. 3 protections were broken on purpose, and each was caught.
+
+## 2026-10-13: Stop now ends a tool's whole family on Linux and macOS too, and CI proves it
+
+- **Found by an external reviewer:** `test_stop_ends_the_tool_and_any_program_it_started` failed on Linux. Stop ended the tool but not the programs it started, the limit noted in the 2026-10-11 entry. Worse, the test wasn't marked Windows-only, so anyone cloning on Linux or a Mac saw a failing suite. Linux matters here, because tape work runs on Linux.
+- **Fix:**
+  - on Linux and macOS, each tool starts in its own process group;
+  - Stop signals the whole group: a polite request first, then a firm one if anything is still running after 5 seconds;
+  - Windows keeps `taskkill /T`.
+- **The test's own check was hardened:** on Linux, a stopped program can linger briefly as a "zombie" (finished, not yet tidied away). The test now counts that as stopped, not running.
+- **CI (GitHub Actions):** the tests now run on GitHub's own Linux and Windows machines, with Python 3.11 and 3.13, after every push. That's how the Linux fix is proven, because the development PC is Windows-only. Tests that need the sibling repos or a running n8n skip themselves there.

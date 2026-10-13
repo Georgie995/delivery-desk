@@ -101,6 +101,7 @@ import subprocess
 import sys
 import threading
 import time
+from pathlib import Path
 
 
 def test_on_the_command_line_tools_run_exactly_as_before(monkeypatch):
@@ -138,12 +139,19 @@ def test_for_the_app_no_console_window_is_opened(monkeypatch):
     desk._run(["tool"], env={}, output=lambda line: None)
     if os.name == "nt":
         assert seen["creationflags"] & subprocess.CREATE_NO_WINDOW
+    else:
+        # Linux and macOS: the tool gets its own process group, so Stop can end it and its children.
+        assert seen["start_new_session"] is True
 
 
 def _alive(pid):
     if os.name == "nt":
         found = subprocess.run(["tasklist", "/FI", f"PID eq {pid}", "/NH"], capture_output=True, text=True).stdout
         return str(pid) in found
+    stat = Path(f"/proc/{pid}/stat")
+    if stat.exists():
+        # A stopped program can linger as a "zombie" (state Z) until it's tidied away: that's not running.
+        return stat.read_text().rsplit(")", 1)[1].split()[0] != "Z"
     try:
         os.kill(pid, 0)
         return True

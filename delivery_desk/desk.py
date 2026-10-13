@@ -145,7 +145,10 @@ def _run(command, env, cwd=None, output=None, stop=None):
     """
     if output is None and stop is None:
         return subprocess.run(command, env=env, cwd=cwd).returncode
-    extra = {"creationflags": subprocess.CREATE_NO_WINDOW} if os.name == "nt" else {}
+    if os.name == "nt":
+        extra = {"creationflags": subprocess.CREATE_NO_WINDOW}
+    else:
+        extra = {"start_new_session": True}  # its own process group, so Stop can end its children too
     process = subprocess.Popen(command, env=env, cwd=cwd, stdout=subprocess.PIPE, stderr=subprocess.STDOUT,
                                text=True, encoding="utf-8", errors="replace", **extra)
     # Read in the background, so a chatty tool can never fill its pipe and stall.
@@ -171,13 +174,21 @@ def _collect(stream, output):
 
 
 def _stop_with_children(process):
-    """Stopping is safe: every tool only reads the delivery. On Windows, ending a program doesn't
-    end the programs it started, so the whole family is ended with Windows' own taskkill."""
+    """Stopping is safe: every tool only reads the delivery. Ending a program doesn't end the
+    programs it started (delivery-ops-hub starts manifest-doctor), so the whole family is ended:
+    on Windows with its own taskkill; elsewhere by signalling the tool's process group."""
     if os.name == "nt":
         subprocess.run(["taskkill", "/PID", str(process.pid), "/T", "/F"], capture_output=True,
                        creationflags=subprocess.CREATE_NO_WINDOW)
-    else:
-        process.terminate()
+        return
+    import signal
+    try:
+        os.killpg(process.pid, signal.SIGTERM)   # its own group: the group's number is the tool's
+        process.wait(timeout=5)
+    except subprocess.TimeoutExpired:
+        os.killpg(process.pid, signal.SIGKILL)   # still running after a polite request
+    except ProcessLookupError:
+        pass                                      # it had already finished
 
 
 def _env_with_path(folder, secrets=None, give=()):
