@@ -246,3 +246,15 @@ Each entry records the decision, the alternatives considered and why this one wa
   - Windows keeps `taskkill /T`.
 - **The test's own check was hardened:** on Linux, a stopped program can linger briefly as a "zombie" (finished, not yet tidied away). The test now counts that as stopped, not running.
 - **CI (GitHub Actions):** the tests now run on GitHub's own Linux and Windows machines, with Python 3.11 and 3.13, after every push. That's how the Linux fix is proven, because the development PC is Windows-only. Tests that need the sibling repos or a running n8n skip themselves there.
+
+## 2026-10-20: Tests run on GitHub after every push, and every Monday
+
+- **Need:** Georgi asked which automations would genuinely improve the published tools (research in his private notes). The tests already ran on GitHub, but 18 joined-up tests skipped there because the sibling repos weren't present.
+- **Options:** (a) leave as is; (b) fetch the siblings on every push; (c) fetch them on the weekly run only.
+- **Decision (Georgi, 2026-10-20):** (b). **Sibling repos (Georgi's choice):** each run fetches the latest delivery-ops-hub, manifest-doctor (into `delivery-verify`) and ai-triage (with its own `.venv` holding the Anthropic library) next to this repo, so the joined-up tests run on GitHub too, not only on the development PC. A change in a sibling can turn this repo's tests red; that is the point.
+  - **Every Monday at 06:00 UTC** the tests run again even if nothing was pushed, so a new Python version or a change in a sibling repo is noticed without anyone looking.
+  - **Safety:** read-only permissions, no secrets (so no AI call is possible), and only GitHub's own official actions.
+- **Known limits:**
+  - GitHub pauses scheduled runs in a repo with no activity for 60 days.
+  - **There's no n8n on GitHub,** so the one live end-to-end test skips there.
+- **Tested by:** before pushing, each suite was run from fresh local clones laid out exactly as the workflow lays them out. A checker confirmed every workflow file follows the rules above, and each rule was broken on purpose once (write permission, no Monday run, a secret, a non-GitHub action, a wrong or missing sibling, the wrong machines); the checker caught every break. The workflow itself can only be fully proven on GitHub, by the first run after pushing.

@@ -1,6 +1,6 @@
 # delivery-desk
 
-[![tests](https://github.com/Georgie995/delivery-desk/actions/workflows/tests.yml/badge.svg)](https://github.com/Georgie995/delivery-desk/actions/workflows/tests.yml) *Tests run on Linux and Windows after every change.*
+[![tests](https://github.com/Georgie995/delivery-desk/actions/workflows/tests.yml/badge.svg)](https://github.com/Georgie995/delivery-desk/actions/workflows/tests.yml) *Tests run on Linux and Windows after every change, and every Monday.*
 
 One command takes a problem delivery from **check** to a **ready-to-fill incident note**. A second command turns my filled-in note into an **email for my manager**. It joins my three earlier tools into one flow, and **it never sends anything, never decides the cause or the fix, and never changes the delivery.**
 

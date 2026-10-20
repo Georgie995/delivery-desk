@@ -1,10 +1,14 @@
-# Runs the tests on GitHub's own Linux and Windows machines after every push.
-# Tests that need the sibling repos or a running n8n skip themselves here; everything else runs.
+# Runs the tests on GitHub's own Linux and Windows machines after every push, and every Monday
+# even if nothing was pushed (so a change in a sibling repo or a new Python is noticed).
+# The sibling repos are fetched next to this one, as on the author's PC, so the joined-up tests
+# run too. Only the tests that need a running n8n skip themselves here.
 name: tests
 
 on:
   push:
   pull_request:
+  schedule:
+    - cron: "0 6 * * 1"   # Mondays 06:00 UTC
 
 permissions:
   contents: read
@@ -18,9 +22,33 @@ jobs:
         python: ["3.11", "3.13"]
     runs-on: ${{ matrix.os }}
     steps:
+      # "delivery-verify" is manifest-doctor's folder name on the author's PC, which the tests expect.
       - uses: actions/checkout@v4
+        with:
+          path: delivery-desk
+      - uses: actions/checkout@v4
+        with:
+          repository: Georgie995/delivery-ops-hub
+          path: delivery-ops-hub
+      - uses: actions/checkout@v4
+        with:
+          repository: Georgie995/manifest-doctor
+          path: delivery-verify
+      - uses: actions/checkout@v4
+        with:
+          repository: Georgie995/ai-triage
+          path: ai-triage
       - uses: actions/setup-python@v5
         with:
           python-version: ${{ matrix.python }}
+      # ai-triage runs with its own Python, as on the author's PC. There's no API key here,
+      # and the tests remove it anyway, so no AI call is ever made.
+      - name: ai-triage's own .venv
+        shell: bash
+        run: |
+          python -m venv ai-triage/.venv
+          if [ -x ai-triage/.venv/bin/python ]; then py=ai-triage/.venv/bin/python; else py=ai-triage/.venv/Scripts/python.exe; fi
+          "$py" -m pip install "anthropic==1.13.0"
       - run: python -m pip install pytest
       - run: python -m pytest -q -rs
+        working-directory: delivery-desk
