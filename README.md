@@ -172,6 +172,7 @@ bash tools/copy-and-verify.sh --name "Ingest ShowA" --dest /deliveries/ShowA --l
 - **Answers typed with `--ask` can't contain blank lines,** because an empty line finishes the answer. For paragraphs, edit the note in a text editor.
 - **The note's headings must stay exactly as they are.** If one is renamed, the tool stops and names it rather than guessing.
 - **The copy → verify chain reads the source twice:** once to make the list, once to copy. On a long tape restore that's real time. It's the price of a list that can catch a bad copy.
+- **On Windows, don't start the copy command with `bash`.** The copy is started through Windows, where `bash` can mean WSL's bash rather than Git's, and the copy then fails. Use `sh my-copy.sh`, or Git's full path to `bash.exe`. Found during the hands-on practice run.
 - **The chain has only been run with stand-in copy commands** (short Python scripts) on Windows and on GitHub's Linux machines, never with a real tape restore or rclone transfer.
 
 ## Documentation
