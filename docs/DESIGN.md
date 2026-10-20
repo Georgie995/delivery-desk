@@ -204,3 +204,28 @@ The exit code is the number a program reports when it ends, so other automation 
    - *Most plausible way to do it* is **how** best to do it, e.g. "copy it from tape 2, rename it with a version suffix, upload it with a note listing both versions".
 2. **A note only for PROBLEMS FOUND:** **answered, yes.** There's no note for CLEAN or PASSED WITH WARNINGS, and none for NOT CHECKED, because there's no report.
 3. **The email subject line:** **answered.** The format is `Delivery issue: <subject summary> (PROBLEMS FOUND)`. I write the summary myself (option a), as a fifth section in the working note.
+
+## 13. Copy → verify → alert, in one command (approved by Georgi, 2026-10-20)
+
+**From Georgi's automation answers:**
+- **Q1:** at work, he used chained scripts and manual runs.
+- **Q2:** the steps he most wished would start by themselves after a copy: the verify, telling someone, and writing up the problem. `check` already does all three; what was missing was starting it when the copy ends.
+- **Q3:** whether a checksum list exists depends on the copy method. Some write one when they finish; others don't, and making one became a separate step.
+- **Q4:** at work, that list was made from the copy. Georgi prefers it made from the source, because a list made from the copy can't catch a bad copy.
+
+**The script:** `tools/copy-and-verify.sh`, in Bash.
+1. **The list:**
+   - without `--list`: `manifest-doctor make SOURCE`, before the copy starts. No complete list means no copy.
+   - with `--list`: the copy method's own list is used after the copy, and must exist then.
+2. **The copy,** exactly as typed after `--`, under `job-watch run --watch DEST`. job-watch's status and logs go to its own folder, never the working folder or the destination.
+3. **Only if the copy succeeded:** `delivery_desk check DEST --manifest LIST`. Its outcome is passed on.
+
+**Refused before anything runs:**
+- missing options or no copy command;
+- an overlapping source and destination;
+- a lists folder inside the source or destination;
+- a job-watch state folder inside the destination.
+
+**Exit codes:** `0` clean, `1` problems found, `2` not checked, `3` the alert wasn't delivered, `4` the copy failed. The copy's own exit code is printed, but isn't passed on as the chain's, because it would collide with `1`/`2`/`3`.
+
+**Not in this version:** watch folders (no hands-on experience behind them yet), and checking the source and the copy at the same time.

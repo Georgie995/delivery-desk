@@ -8,3 +8,5 @@ Thumbs.db
 delivery-desk.toml
 .env
 *.secret
+# lists made by tools/copy-and-verify.sh (local, may name real folders)
+chain-lists/

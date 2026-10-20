@@ -82,3 +82,13 @@ python -m delivery_desk check "<delivery folder>" --manifest "<manifest file>"
 - One goes end to end into your real n8n.
 - Six protections were broken on purpose, and a test caught each one.
 - A test also confirms **the delivery's files are never changed.**
+
+## Module 4: the copy → verify → alert chain (`tools/copy-and-verify.sh`, 2026-10-20)
+
+**In plain words:** one command does what used to be four steps by hand. It makes a fingerprint list of the source, runs the copy while job-watch keeps an eye on it, and as soon as the copy succeeds, checks the copy against the list. Then it sends the alert and writes the incident note if anything is wrong.
+
+**Why it refuses so much up front:** every refusal is a way the check could quietly mean nothing. For example, a destination inside the source would put the copy into the very thing being listed.
+
+**Why exit code 4 for a failed copy:** the copy's own code might be 1 or 2, which would look like "problems found" or "not checked". A separate number keeps "the copy failed" unmistakable for any automation that runs the chain.
+
+**How it's tested:** the tests run the real script with fake copies, written as short Python commands: a good one, a bad one that changes a file, one that fails, and one that deletes a source file as it goes. The last one proves the list really is made before the copy.

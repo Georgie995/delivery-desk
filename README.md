@@ -102,6 +102,30 @@ manifest listing both versions with their checksums.
 
 The note's private part held the probable cause (`CAUSE_DUPLICATE_LISTING`, the file `ShowA/Reel01/clip_0004.mov`) and ai-triage's summary. Neither went into the email.
 
+## Copy, then verify, in one command
+
+Running a copy, remembering to verify it, then telling people and writing it up were separate steps done by hand. `tools/copy-and-verify.sh` joins them, so the check can't be forgotten:
+
+```bash
+# The copy method writes no checksum list: one is made from the source, before the copy.
+bash tools/copy-and-verify.sh --name "Restore TAPE001" --source /restore/TAPE001 --dest /deliveries/TAPE001 \
+    -- rsync -a /restore/TAPE001/ /deliveries/TAPE001/
+
+# The copy method writes its own list: give it with --list.
+bash tools/copy-and-verify.sh --name "Ingest ShowA" --dest /deliveries/ShowA --list /lists/ShowA.md5 \
+    -- <copy command that writes /lists/ShowA.md5>
+```
+
+1. **The list.** Without `--list`, [manifest-doctor](https://github.com/Georgie995/manifest-doctor)'s `make` writes one **from the source, before the copy starts**. A list made from the copy afterwards would always agree with it, so it could never catch a bad copy. If no complete list can be made, the copy isn't started.
+2. **The copy** runs exactly as typed, under [job-watch](https://github.com/Georgie995/job-watch): alerts on finish, failure, stall and resume.
+3. **Only if the copy succeeded:** `check` on the destination against the list, which means the verify, one alert, and the incident note when there are problems.
+
+- **Refused before anything runs:** a missing `--name`, `--dest`, `--source`/`--list` or copy command; a source and destination that overlap; a lists or job-watch folder inside the destination.
+- **The source and destination are only read** by the chain. Only your copy command writes.
+- **Where things go:** made lists in `chain-lists/` (or `--lists-dir`); job-watch's status and logs in its own folder (or `--state-dir`); settings from `delivery-desk.toml` and job-watch's `job-watch.toml` (or `--desk-config`, `--watch-config`).
+- **Finding the other tools:** job-watch and manifest-doctor are expected next to this folder. Otherwise set `JOB_WATCH_DIR`, `MANIFEST_DOCTOR_DIR`, and `PYTHON` if Python 3.11+ isn't found by itself.
+- **Exit codes:** `0` copied and clean; `1` copied, problems found and written up; `2` not checked (a mistake in the options, no complete list, or the check couldn't run); `3` checked, but the alert wasn't delivered; `4` the copy failed or was interrupted, so nothing was checked (job-watch has already alerted).
+
 ## Set-up
 
 - **Requirements:** Python 3.11+, standard library only.
@@ -116,10 +140,10 @@ The note's private part held the probable cause (`CAUSE_DUPLICATE_LISTING`, the 
   ```
   python -m pytest
   ```
-  - **76 tests.** 58 run anywhere: the note, the email, `--ask`, the settings checks, the secrets rules and how tools are run.
+  - **96 tests.** 58 run anywhere: the note, the email, `--ask`, the settings checks, the secrets rules and how tools are run.
   - **The joined-up tests** run the real delivery-ops-hub, manifest-doctor and ai-triage on a tiny synthetic delivery, with a stand-in for n8n. They run when those repos sit next to this folder. The AI key is always removed in the tests, so no AI call is ever made.
   - **One end-to-end test** uses a real, running n8n.
-  - **The tests were checked by breaking the code on purpose:** 35 protections were broken one at a time, and a test failed every time.
+  - **The tests were checked by breaking the code on purpose:** 51 protections were broken one at a time, and a test failed every time.
 
 ## Exit codes
 
@@ -147,6 +171,8 @@ The note's private part held the probable cause (`CAUSE_DUPLICATE_LISTING`, the 
 - **Notes are only made for PROBLEMS FOUND.** A check that couldn't run has no report, so there's nothing to write a note about, but delivery-ops-hub's alert still says so.
 - **Answers typed with `--ask` can't contain blank lines,** because an empty line finishes the answer. For paragraphs, edit the note in a text editor.
 - **The note's headings must stay exactly as they are.** If one is renamed, the tool stops and names it rather than guessing.
+- **The copy → verify chain reads the source twice:** once to make the list, once to copy. On a long tape restore that's real time. It's the price of a list that can catch a bad copy.
+- **The chain has only been run with stand-in copy commands** (short Python scripts) on Windows and on GitHub's Linux machines, never with a real tape restore or rclone transfer.
 
 ## Documentation
 

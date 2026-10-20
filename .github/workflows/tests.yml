@@ -38,6 +38,11 @@ jobs:
         with:
           repository: Georgie995/ai-triage
           path: ai-triage
+      # The copy → verify chain (tools/copy-and-verify.sh) runs the copy under job-watch.
+      - uses: actions/checkout@v4
+        with:
+          repository: Georgie995/job-watch
+          path: job-watch
       - uses: actions/setup-python@v5
         with:
           python-version: ${{ matrix.python }}

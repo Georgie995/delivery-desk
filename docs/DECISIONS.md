@@ -258,3 +258,18 @@ Each entry records the decision, the alternatives considered and why this one wa
   - GitHub pauses scheduled runs in a repo with no activity for 60 days.
   - **There's no n8n on GitHub,** so the one live end-to-end test skips there.
 - **Tested by:** before pushing, each suite was run from fresh local clones laid out exactly as the workflow lays them out. A checker confirmed every workflow file follows the rules above, and each rule was broken on purpose once (write permission, no Monday run, a secret, a non-GitHub action, a wrong or missing sibling, the wrong machines); the checker caught every break. The workflow itself can only be fully proven on GitHub, by the first run after pushing.
+
+## 2026-10-20: Copy → verify → alert, in one command
+
+- **Need (Georgi's automation answers):** after a copy, he most wished the verify, telling someone and writing up the problem would start by themselves. `check` already does all three; nothing started it when the copy ended. Whether a checksum list exists depends on the copy method, and Georgi prefers one made from the source.
+- **Options:**
+  - (a) a Bash script joining job-watch, manifest-doctor `make` and `check`;
+  - (b) a new Python command inside delivery-desk;
+  - (c) a watch folder that starts checks by itself.
+- **Decision (Georgi, 2026-10-20):** (a), `tools/copy-and-verify.sh`. Bash is what Georgi knows from work automation. Watch folders were deferred, because there's no hands-on experience behind them yet.
+- **Choices inside it:**
+  - the list is made before the copy; no complete list means no copy;
+  - the chain stops after a failed copy, with its own exit code 4, so it can't be mistaken for "problems found";
+  - folder layouts that would pollute the check are refused before anything runs;
+  - job-watch's files go to its own folder, never the working folder.
+- **Tested by:** 20 new tests (96 in total), running the real script with fake copies: good, bad, failed, and one that deletes a source file mid-copy, which proves the list is made first. 16 protections were broken on purpose, and a test caught each one. Along the way, one test was tightened to check its own refusal message, because another rule was also firing. A path-handling bug was also found and fixed: a Windows-style script path lost its folder.
